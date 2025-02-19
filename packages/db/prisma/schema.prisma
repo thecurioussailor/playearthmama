@@ -1,0 +1,230 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  username        String    @unique
+  password        String
+  profileImageUrl String?
+  bio             String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  videos         Video[]
+  comments       Comment[]
+  likes          Like[]
+  dislikes       Dislike[]
+  subscriptions  Subscription[] @relation("Subscriber")
+  subscribers    Subscription[] @relation("Creator")
+  playlists      Playlist[]
+  groupsOwned    Group[]        @relation("GroupOwner")
+  groupsMember   GroupMember[]
+  watchHistory   WatchHistory[]
+}
+
+model Video {
+  id           String   @id @default(uuid())
+  title        String
+  description  String?
+  url          String
+  thumbnailUrl String?
+  duration     Int      // Duration in seconds
+  userId       String
+  isPublic     Boolean  @default(true)
+  viewCount    Int      @default(0)
+  likeCount    Int      @default(0)
+  dislikeCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id])
+  tags          VideoTag[]
+  comments      Comment[]
+  likes         Like[]
+  dislikes      Dislike[]
+  playlists     PlaylistVideo[]
+  watchSessions WatchSession[]
+  watchHistory  WatchHistory[]
+  categories    VideoCategory[]
+}
+
+model VideoTag {
+  id      String @id @default(uuid())
+  videoId String
+  tagId   String
+
+  video Video @relation(fields: [videoId], references: [id])
+  tag   Tag   @relation(fields: [tagId], references: [id])
+
+  @@unique([videoId, tagId])
+}
+
+model Tag {
+  id    String     @id @default(uuid())
+  name  String     @unique
+  videos VideoTag[]
+}
+
+model Category {
+  id     String          @id @default(uuid())
+  name   String          @unique
+  videos VideoCategory[]
+}
+
+model VideoCategory {
+  id         String @id @default(uuid())
+  videoId    String
+  categoryId String
+
+  video    Video    @relation(fields: [videoId], references: [id])
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([videoId, categoryId])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  userId    String
+  videoId   String
+  parentId  String?  // For nested comments
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id])
+  video    Video    @relation(fields: [videoId], references: [id])
+  parent   Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies  Comment[] @relation("CommentReplies")
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  userId    String
+  videoId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  video Video @relation(fields: [videoId], references: [id])
+
+  @@unique([userId, videoId])
+}
+
+model Dislike {
+  id        String   @id @default(uuid())
+  userId    String
+  videoId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  video Video @relation(fields: [videoId], references: [id])
+
+  @@unique([userId, videoId])
+}
+
+model Subscription {
+  id           String   @id @default(uuid())
+  subscriberId String
+  creatorId    String
+  createdAt    DateTime @default(now())
+
+  subscriber User @relation("Subscriber", fields: [subscriberId], references: [id])
+  creator    User @relation("Creator", fields: [creatorId], references: [id])
+
+  @@unique([subscriberId, creatorId])
+}
+
+model Playlist {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  userId      String
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user   User            @relation(fields: [userId], references: [id])
+  videos PlaylistVideo[]
+}
+
+model PlaylistVideo {
+  id         String   @id @default(uuid())
+  playlistId String
+  videoId    String
+  order      Int
+  addedAt    DateTime @default(now())
+
+  playlist Playlist @relation(fields: [playlistId], references: [id])
+  video    Video    @relation(fields: [videoId], references: [id])
+
+  @@unique([playlistId, videoId])
+}
+
+model Group {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner         User           @relation("GroupOwner", fields: [ownerId], references: [id])
+  members       GroupMember[]
+  watchSessions WatchSession[]
+}
+
+model GroupMember {
+  id        String   @id @default(uuid())
+  userId    String
+  groupId   String
+  role      GroupRole @default(MEMBER)
+  joinedAt  DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  group Group @relation(fields: [groupId], references: [id])
+
+  @@unique([userId, groupId])
+}
+
+model WatchSession {
+  id        String    @id @default(uuid())
+  groupId   String
+  videoId   String
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  currentTime Int     @default(0) // Current playback position in seconds
+
+  group Group @relation(fields: [groupId], references: [id])
+  video Video @relation(fields: [videoId], references: [id])
+}
+
+model WatchHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  videoId   String
+  watchedAt DateTime @default(now())
+  duration  Int      // Duration watched in seconds
+
+  user  User  @relation(fields: [userId], references: [id])
+  video Video @relation(fields: [videoId], references: [id])
+
+  @@unique([userId, videoId])
+}
+
+enum GroupRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
