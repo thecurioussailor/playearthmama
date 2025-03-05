@@ -7,6 +7,7 @@ import { commentRoutes } from "./comments";
 import { subscriptionRoutes } from "./subscriptions";
 import { playlistRoutes } from "./playlists";
 import { groupRoutes } from "./groups";
+import { watchSessionRouter } from "./watch-sessions";
 
 export const router = Router();
 
@@ -18,4 +19,4 @@ router.use('/likes', likeRoutes);
 router.use('/subscriptions', subscriptionRoutes);
 router.use('/playlists', playlistRoutes);
 router.use('/groups', groupRoutes);
-// router.use('/watch-sessions', );
+router.use('/watch-sessions', watchSessionRouter);
